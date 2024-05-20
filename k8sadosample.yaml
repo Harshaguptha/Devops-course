@@ -1,0 +1,37 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  k8sServiceConnection: 'your_k8s_service_connection_name'
+  namespace: 'your_namespace'
+
+jobs:
+- job: deploy
+  displayName: Deploy to Kubernetes
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - script: |
+      echo "Installing kubectl"
+      curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+      chmod +x ./kubectl
+      sudo mv ./kubectl /usr/local/bin/kubectl
+      echo "Installing helm"
+      curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod 700 get_helm.sh
+      ./get_helm.sh
+    displayName: 'Setup kubectl and helm'
+
+  - task: Kubernetes@1
+    displayName: 'Deploy to Kubernetes'
+    inputs:
+      connectionType: 'Kubernetes Service Connection'
+      kubernetesServiceConnection: $(k8sServiceConnection)
+      namespace: $(namespace)
+      command: 'apply'
+      arguments: '-f k8s/deployment.yaml'
+    env:
+      KUBECONFIG: $(KUBECONFIG)
